@@ -1,5 +1,4 @@
 
-// internal/services/stock_service.go
 package services
 
 import (
@@ -8,9 +7,7 @@ import (
 	"time"
 
 	"database/sql"
-
-	// "truora-challenge/internal/models"
-	"backend/internal/models"
+	"Backend/internal/models"
 )
 
 type StockService struct {
@@ -26,10 +23,9 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 		SELECT id, ticker, company, brokerage, action, rating_from, rating_to, 
 		       target_from, target_to, time, created_at, updated_at
 		FROM stocks
-		WHERE 1=1
 	`
 	
-	args := []interface{}{}
+	args := []any{}
 	argIndex := 1
 
 	// Aplicar filtros
@@ -150,7 +146,7 @@ func (s *StockService) GetRecommendations() ([]models.Recommendation, error) {
 	return recommendations, nil
 }
 
-func calculateScore(rating, action string, time time.Time) float64 {
+func calculateScore(rating, action string, timestamp time.Time) float64 {
 	score := 50.0 // Base score
 
 	// Bonus por rating
@@ -169,7 +165,7 @@ func calculateScore(rating, action string, time time.Time) float64 {
 	}
 
 	// Bonus por recencia
-	daysSince := time.Since(time).Hours() / 24
+	daysSince := time.Now().Sub(timestamp).Hours() / 24
 	if daysSince < 7 {
 		score += 10
 	} else if daysSince < 14 {
@@ -205,9 +201,23 @@ func generateReason(rating, action, target string) string {
 	return strings.Join(reasons, " • ")
 }
 
+
+// Implementación completa del método SyncAllData
 func (s *StockService) SyncAllData(apiClient *APIClient) error {
-	// Implementar sincronización completa
-	// Este método debe paginar a través de toda la API
+	fmt.Println("Iniciando sincronización de datos...")
+	
+	stocks, err := apiClient.FetchAllStocks()
+	if err != nil {
+		return fmt.Errorf("error fetching stocks from API: %w", err)
+	}
+
+	fmt.Printf("Obtenidos %d registros de la API\n", len(stocks))
+
+	if err := s.InsertStocks(stocks); err != nil {
+		return fmt.Errorf("error inserting stocks into database: %w", err)
+	}
+
+	fmt.Printf("Sincronización completada: %d registros procesados\n", len(stocks))
 	return nil
 }
 

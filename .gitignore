@@ -1,0 +1,51 @@
+
+
+.env
+.env.local
+.env.*.local
+
+# Archivos de configuración sensibles
+config.local.json
+secrets.json
+
+# Logs
+*.log
+logs/
+
+# Base de datos local
+*.db
+*.sqlite
+*.sqlite3
+
+# Archivos temporales
+tmp/
+temp/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Binarios de Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+main
+__debug_bin
+
+# Test coverage
+*.out
+coverage.html
+
+# Vendor (si usas vendor)
+vendor/
+
+# Air (live reload)
+tmp/

@@ -1,4 +1,5 @@
 
+// internal/models/stock.go
 package models
 
 import (

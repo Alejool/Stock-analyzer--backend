@@ -6,7 +6,7 @@ import (
 	"os"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/alejool/RetosTecnicos/Backend/internal/api"
+	"Backend/internal/api"
 	"Backend/internal/config"
 	"Backend/internal/database"
 	"Backend/internal/services"
@@ -18,15 +18,25 @@ func main() {
 	cfg := config.Load()
 
 	// Conectar a la base de datos
-	db, err := database.Connect(cfg.DatabaseURL)
+	// db, err := database.Connect(cfg.DatabaseURL )
+	// if err != nil {
+	// 	log.Fatal("Error conectando a la base de datos:", err)
+	// }
+	// defer db.Close()
+	db, err := database.Connect(cfg.DatabaseURL )
 	if err != nil {
 		log.Fatal("Error conectando a la base de datos:", err)
 	}
+
+	
 	defer db.Close()
 
 	// Ejecutar migraciones
 	if err := database.Migrate(db); err != nil {
 		log.Fatal("Error ejecutando migraciones:", err)
+		log.Println("Error ejecutando migraciones:", err)
+	} else {
+		log.Println("Database migrations executed successfully")
 	}
 
 	// Inicializar servicios
@@ -43,9 +53,11 @@ func main() {
 	// Configurar router
 	r := gin.Default()
 
+
 	// Configurar CORS
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173"},
+		// AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"*"},
 		AllowCredentials: true,

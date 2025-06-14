@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	// _ "github.com/lib/pq"
+	_ "github.com/lib/pq"
 )
 
 func Connect(databaseURL string) (*sql.DB, error) {
@@ -44,8 +44,20 @@ func Migrate(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_stocks_company ON stocks(company);
 	CREATE INDEX IF NOT EXISTS idx_stocks_time ON stocks(time DESC);
 	CREATE INDEX IF NOT EXISTS idx_stocks_rating_to ON stocks(rating_to);
-	`
 
+	-- Insert sample data
+	-- delete from stocks;
+	TRUNCATE TABLE stocks;
+
+	INSERT INTO stocks (ticker, company, brokerage, action, rating_from, rating_to, target_from, target_to, time)
+	VALUES
+		('AAPL', 'Apple Inc.', 'Morgan Stanley', 'upgrade', 'hold', 'buy', '150', '180', NOW()),
+		('GOOGL', 'Alphabet Inc.', 'Goldman Sachs', 'downgrade', 'buy', 'hold', '2800', '2600', NOW()),
+		('MSFT', 'Microsoft Corp.', 'JP Morgan', 'reiterate', 'buy', 'buy', '310', '320', NOW()),
+		('AMZN', 'Amazon.com Inc.', 'Citigroup', 'initiate', 'sell', 'buy', 'null', '3500', NOW()),
+		('TSLA', 'Tesla Inc.', 'Bank of America', 'upgrade', 'sell', 'hold', '200', '250', NOW())
+	ON CONFLICT (ticker, brokerage, time) DO NOTHING;
+	`
 	_, err := db.Exec(query)
 	return err
 }

@@ -1,19 +1,28 @@
-
 package api
 
 import (
+	"Backend/internal/models"
+	"Backend/internal/services"
+	"log"
 	"net/http"
 	"strconv"
+
 	"github.com/gin-gonic/gin"
-	"../models"
-	"Backend/internal/services"
 )
 
 func SetupRoutes(r *gin.Engine, stockService *services.StockService) {
+	// Debug: Print stockService details for debugging
+	// log.Printf("StockService initialized with database connection: %+v\n", stockService)
 	api := r.Group("/api/v1")
 	{
+		// Debug: Log each route registration
+		log.Println("Registering route: GET /api/v1/stocks")
 		api.GET("/stocks", getStocks(stockService))
+		
+		log.Println("Registering route: GET /api/v1/recommendations") 
 		api.GET("/recommendations", getRecommendations(stockService))
+		
+		log.Println("Registering route: GET /api/v1/health")
 		api.GET("/health", healthCheck)
 	}
 }
