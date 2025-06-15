@@ -23,6 +23,8 @@ func Connect(databaseURL string) (*sql.DB, error) {
 
 func Migrate(db *sql.DB) error {
 	query := `
+DROP TABLE IF EXISTS stocks;
+
 	CREATE TABLE IF NOT EXISTS stocks (
 		id SERIAL PRIMARY KEY,
 		ticker VARCHAR(10) NOT NULL,
@@ -36,6 +38,11 @@ func Migrate(db *sql.DB) error {
 		time TIMESTAMP NOT NULL,
 		created_at TIMESTAMP DEFAULT NOW(),
 		updated_at TIMESTAMP DEFAULT NOW(),
+		score FLOAT,
+		reason VARCHAR(255),
+		target_price VARCHAR(20),
+		current_rating VARCHAR(50),
+		confidence FLOAT,
 		UNIQUE(ticker, brokerage, time)
 	);
 

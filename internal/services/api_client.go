@@ -126,6 +126,8 @@ for {
             CreatedAt:  time.Now(),
             UpdatedAt:  time.Now(),
         }
+
+				// 
         allStocks = append(allStocks, stock)
     }
 
@@ -157,26 +159,33 @@ func (s *StockService) InsertStocks(stocks []models.Stock) error {
 
 	query := `
 		INSERT INTO stocks (ticker, company, brokerage, action, rating_from, rating_to, 
-		                   target_from, target_to, time, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		                   target_from, target_to, time, created_at, updated_at, score, reason, target_price, current_rating, confidence)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		ON CONFLICT (ticker, brokerage, time) DO UPDATE SET
-			company = EXCLUDED.company,
 			action = EXCLUDED.action,
 			rating_from = EXCLUDED.rating_from,
 			rating_to = EXCLUDED.rating_to,
 			target_from = EXCLUDED.target_from,
 			target_to = EXCLUDED.target_to,
-			updated_at = NOW()
+			created_at = EXCLUDED.created_at,
+			updated_at = NOW(),
+			score = EXCLUDED.score,
+			reason = EXCLUDED.reason,
+			target_price = EXCLUDED.target_price,
+			current_rating = EXCLUDED.current_rating,
+			confidence = EXCLUDED.confidence
 	`
 
 	tx, err := s.db.Begin()
 	if err != nil {
+		fmt.Printf("error starting transaction: %w", err)
 		return fmt.Errorf("error starting transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(query)
 	if err != nil {
+		fmt.Printf("error preparing statement: %w", err)
 		return fmt.Errorf("error preparing statement: %w", err)
 	}
 	defer stmt.Close()
@@ -186,7 +195,7 @@ func (s *StockService) InsertStocks(stocks []models.Stock) error {
 		_, err := stmt.Exec(
 			stock.Ticker, stock.Company, stock.Brokerage, stock.Action,
 			stock.RatingFrom, stock.RatingTo, stock.TargetFrom, stock.TargetTo,
-			stock.Time, stock.CreatedAt, stock.UpdatedAt,
+			stock.Time, stock.CreatedAt, stock.UpdatedAt, stock.Score, stock.Reason, stock.TargetPrice, stock.CurrentRating, stock.Confidence,
 		)
 		
 		if err != nil {

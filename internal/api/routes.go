@@ -49,7 +49,7 @@ func getStocks(stockService *services.StockService) gin.HandlerFunc {
 			}
 		}
 		
-		if limit := c.Query("limit"); limit != "" {
+		if limit := c.Query("limit"); limit != "" && limit != "-1" {
 			if l, err := strconv.Atoi(limit); err == nil {
 				filters.Limit = l
 			}

@@ -7,7 +7,7 @@ import (
 
 
 type StockResponse struct {
-	Items    []StockRecomendation `json:"items"`
+	Items    []Stock `json:"items"`
 	NextPage string  `json:"next_page,omitempty"`
 }
 
@@ -22,6 +22,8 @@ type StockFilters struct {
 	Page      int    `json:"page" form:"page"`
 	Limit     int    `json:"limit" form:"limit"`
 	ProductID        int    `json:"id" form:"id"`
+	Score float64 `json:"score" form:"score"`
+	Confidence string `json:"confidence" form:"confidence"`
 }
 
 
@@ -38,6 +40,11 @@ type Stock struct {
 	Time       time.Time `json:"time" db:"time"`
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
+	Score       float64 `json:"score,omitempty"`
+	Reason      string  `json:"reason,omitempty"`
+	TargetPrice string  `json:"target_price,omitempty"`
+	CurrentRating string `json:"current_rating,omitempty"`
+	Confidence  float64 `json:"confidence,omitempty"`
 	
 }
 

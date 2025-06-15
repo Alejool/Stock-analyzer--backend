@@ -1,14 +1,13 @@
-
 package services
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
-	"sort"
 
-	"database/sql"
 	"Backend/internal/models"
+	"database/sql"
 )
 
 type StockService struct {
@@ -22,10 +21,11 @@ func NewStockService(db *sql.DB) *StockService {
 func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResponse, error) {
 	query := `
 		SELECT id, ticker, company, brokerage, action, rating_from, rating_to, 
-		       target_from, target_to, time, created_at, updated_at
+		       target_from, target_to, time, created_at, updated_at, score, confidence
 		FROM stocks
+
 	`
-	
+
 	args := []any{}
 	argIndex := 1
 
@@ -48,37 +48,60 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 		argIndex++
 	}
 
-	if(filters.ProductID != 0){
+	if filters.ProductID != 0 {
 		query += fmt.Sprintf(" AND id = $%d", argIndex)
 		args = append(args, filters.ProductID)
 		argIndex++
 	}
 
+	if filters.Score > 0 {
+		query += fmt.Sprintf(" AND score >= $%d", argIndex)
+		args = append(args, filters.Score)
+		argIndex++
+	}
+	// quieor que confidence sea un orden de accedente o desc sea cual sea
+// Confidence should be handled in ORDER BY, not as a WHERE condition
+if filters.Confidence != "" {
+    if strings.ToUpper(filters.Confidence) == "ASC" {
+        query += " ORDER BY confidence ASC"
+    } else if strings.ToUpper(filters.Confidence) == "DESC" {
+        query += " ORDER BY confidence DESC"
+    }
+}
+
+	// fmt.Println("query: ", query)
+
 	// Ordenamiento
-	sortBy := "time"
+	sortBy := "confidence"
 	if filters.SortBy != "" {
 		sortBy = filters.SortBy
 	}
-	
-	order := "asc"
+
+	order := ""
 	if filters.Order == "asc" {
 		order = "ASC"
+	}
+	if filters.Order == "desc" {
+		order = "DESC"
 	}
 
 	query += fmt.Sprintf(" ORDER BY %s %s", sortBy, order)
 
 	// Paginación
-	limit := 100
-	if filters.Limit > 0 && filters.Limit <= 100 {
-		limit = filters.Limit
-	}
+	// limit := -1
+	// if filters.Limit > 0 && filters.Limit <= 100 {
+	// 	limit = filters.Limit
+	// }
+	
 
-	offset := 0
-	if filters.Page > 0 {
-		offset = (filters.Page - 1) * limit
-	}
+	// offset := 0
+	// if filters.Page > 0 {
+	// 	offset = (filters.Page - 1) * limit
+	// }
 
-	query += fmt.Sprintf(" LIMIT %d OFFSET %d", limit, offset)
+	// query += fmt.Sprintf(" LIMIT %d OFFSET %d", limit, offset)
+
+	// fmt.Println("query: ", query)
 
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
@@ -86,56 +109,45 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 	}
 	defer rows.Close()
 
-	var stocks []models.StockRecomendation
+	var stocks []models.Stock
 	for rows.Next() {
-		var stock models.StockRecomendation
-			
+		var stock models.Stock
+
 		err := rows.Scan(
 			&stock.ID, &stock.Ticker, &stock.Company, &stock.Brokerage,
 			&stock.Action, &stock.RatingFrom, &stock.RatingTo,
 			&stock.TargetFrom, &stock.TargetTo, &stock.Time,
-			&stock.CreatedAt, &stock.UpdatedAt,
+			&stock.CreatedAt, &stock.UpdatedAt, &stock.Score, &stock.Confidence,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		score := calculateScore(stock.RatingTo, stock.Action, stock.Time)
-		reason := generateReason(stock.RatingTo, stock.Action, stock.TargetTo)
-
-		stock.Score = score
-		stock.Reason = reason
-		// stock.TargetPrice:   target,
-		stock.CurrentRating= stock.RatingTo
-		stock.Confidence = score / 100
-
-
 		stocks = append(stocks, stock)
 	}
 
 	// oragnizata stocks por confindece
-		sort.Slice(stocks, func(i, j int) bool {
-				return stocks[i].Confidence > stocks[j].Confidence
-		})
+	sort.Slice(stocks, func(i, j int) bool {
+		return stocks[i].Confidence > stocks[j].Confidence
+	})
 
 	return &models.StockResponse{Items: stocks}, nil
 }
 
-func (s *StockService) GetRecommendations() ([]models.Recommendation, error) {
+func (s *StockService) GetRecommendations() ([]models.Stock, error) {
 	// Algoritmo simple de recomendación basado en:
 	// 1. Upgrades recientes
 	// 2. Targets altos
 	// 3. Ratings positivos
-	
+
 	query := `
-		SELECT ticker, company, rating_to, target_to, action, time
+		SELECT ticker, company, rating_to, brokerage, target_to,  rating_from, action, time, score, confidence
 		FROM stocks
-		WHERE rating_to IN ('Buy', 'Strong Buy', 'Outperform', 'Overweight')
-		  AND action LIKE '%upgrade%'
-		  AND time > NOW() - INTERVAL '30 days'
-		GROUP BY ticker, company, rating_to, target_to, action, time
-		ORDER BY time DESC
-		LIMIT 10
+		WHERE 
+		  time > NOW() - INTERVAL '30 days'
+		  AND score > 0
+		ORDER BY confidence DESC, score DESC
+		LIMIT 1
 	`
 
 	rows, err := s.db.Query(query)
@@ -144,27 +156,27 @@ func (s *StockService) GetRecommendations() ([]models.Recommendation, error) {
 	}
 	defer rows.Close()
 
-	var recommendations []models.Recommendation
+	var recommendations []models.Stock
 	for rows.Next() {
-		var ticker, company, rating, target, action string
-		var time time.Time	
-		
-		if err := rows.Scan(&ticker, &company, &rating, &target, &action, &time); err != nil {
-			continue
+		var recomendation models.Stock
+
+		err := rows.Scan(
+			&recomendation.Ticker, 
+			&recomendation.Company,
+			&recomendation.RatingTo, 
+			&recomendation.Brokerage, 
+			&recomendation.TargetTo, 
+			&recomendation.RatingFrom,
+			&recomendation.Action, 
+			 &recomendation.Time,
+			&recomendation.Score, 
+			&recomendation.Confidence,
+		)
+		if err != nil {
+			return nil, err
 		}
-
-		score := calculateScore(rating, action, time)
-		reason := generateReason(rating, action, target)
-
-		recommendations = append(recommendations, models.Recommendation{
-			Ticker:        ticker,
-			Company:       company,
-			Score:         score,
-			Reason:        reason,
-			TargetPrice:   target,
-			CurrentRating: rating,
-			Confidence:    score / 100,
-		})
+		
+		recommendations = append(recommendations, recomendation)
 	}
 
 	return recommendations, nil
@@ -205,46 +217,57 @@ func calculateScore(rating, action string, timestamp time.Time) float64 {
 
 func generateReason(rating, action, target string) string {
 	reasons := []string{}
-	
+
 	if strings.Contains(strings.ToLower(action), "upgrade") {
 		reasons = append(reasons, "Reciente upgrade")
 	}
-	
+
 	if rating == "Strong Buy" || rating == "Buy" {
 		reasons = append(reasons, "Rating de compra")
 	}
-	
+
 	if target != "" {
 		reasons = append(reasons, "Precio objetivo: "+target)
 	}
-	
+
 	if len(reasons) == 0 {
 		return "Análisis técnico favorable"
 	}
-	
+
 	return strings.Join(reasons, " • ")
 }
-
 
 // Implementación completa del método SyncAllData
 func (s *StockService) SyncAllData(apiClient *APIClient) error {
 	fmt.Println("Iniciando sincronización de datos...")
-	
+
 	stocks, err := apiClient.FetchAllStocks()
-	// fmt.Println("stocks: ", stocks)
 
 	// fmt.Println("stocks: ", stocks)
 	if err != nil {
 		return fmt.Errorf("error fetching stocks from API: %w", err)
 	}
 
-	fmt.Printf("Obtenidos %d registros de la API\n", len(stocks))
+	// agregar score y confidence
+	for i := range stocks {
+		score := calculateScore(stocks[i].RatingTo, stocks[i].Action, stocks[i].Time)
+		reason := generateReason(stocks[i].RatingTo, stocks[i].Action, stocks[i].TargetTo)
+
+		stocks[i].Score = score
+		stocks[i].Reason = reason
+		stocks[i].CurrentRating = stocks[i].RatingTo
+		stocks[i].Confidence = score / 100
+	}
+
+	fmt.Print("score y confidence agregados")
+
+	// fmt.Printf("Obtenidos %d registros de la API\n", len(stocks))
 
 	if err := s.InsertStocks(stocks); err != nil {
 		return fmt.Errorf("error inserting stocks into database: %w", err)
 	}
+	
 
 	fmt.Printf("Sincronización completada: %d registros procesados\n", len(stocks))
 	return nil
 }
-
