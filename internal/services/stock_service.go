@@ -157,7 +157,10 @@ func (s *StockService) GetRecommendations() ([]models.Stock, error) {
 		WHERE 
 		  time > NOW() - INTERVAL '30 days'
 		  AND score > 0
-		ORDER BY confidence DESC, score DESC
+		ORDER BY confidence DESC, 
+			score DESC, 
+			time DESC,
+			updated_at DESC  
 		LIMIT 1
 	`
 
