@@ -1,0 +1,13 @@
+settings:
+  legacy:
+    goFile: true
+    run: true
+    buildPath: "tmp"
+
+watch:
+  - name: go
+    paths:
+      - .
+    extensions:
+      - go
+    build: true
