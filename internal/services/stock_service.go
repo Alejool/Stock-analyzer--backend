@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"sort"
 
 	"database/sql"
 	"Backend/internal/models"
@@ -47,13 +48,19 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 		argIndex++
 	}
 
+	if(filters.ProductID != 0){
+		query += fmt.Sprintf(" AND id = $%d", argIndex)
+		args = append(args, filters.ProductID)
+		argIndex++
+	}
+
 	// Ordenamiento
 	sortBy := "time"
 	if filters.SortBy != "" {
 		sortBy = filters.SortBy
 	}
 	
-	order := "DESC"
+	order := "asc"
 	if filters.Order == "asc" {
 		order = "ASC"
 	}
@@ -61,7 +68,7 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 	query += fmt.Sprintf(" ORDER BY %s %s", sortBy, order)
 
 	// Paginación
-	limit := 20
+	limit := 100
 	if filters.Limit > 0 && filters.Limit <= 100 {
 		limit = filters.Limit
 	}
@@ -79,9 +86,10 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 	}
 	defer rows.Close()
 
-	var stocks []models.Stock
+	var stocks []models.StockRecomendation
 	for rows.Next() {
-		var stock models.Stock
+		var stock models.StockRecomendation
+			
 		err := rows.Scan(
 			&stock.ID, &stock.Ticker, &stock.Company, &stock.Brokerage,
 			&stock.Action, &stock.RatingFrom, &stock.RatingTo,
@@ -91,8 +99,24 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 		if err != nil {
 			return nil, err
 		}
+
+		score := calculateScore(stock.RatingTo, stock.Action, stock.Time)
+		reason := generateReason(stock.RatingTo, stock.Action, stock.TargetTo)
+
+		stock.Score = score
+		stock.Reason = reason
+		// stock.TargetPrice:   target,
+		stock.CurrentRating= stock.RatingTo
+		stock.Confidence = score / 100
+
+
 		stocks = append(stocks, stock)
 	}
+
+	// oragnizata stocks por confindece
+		sort.Slice(stocks, func(i, j int) bool {
+				return stocks[i].Confidence > stocks[j].Confidence
+		})
 
 	return &models.StockResponse{Items: stocks}, nil
 }
@@ -123,7 +147,7 @@ func (s *StockService) GetRecommendations() ([]models.Recommendation, error) {
 	var recommendations []models.Recommendation
 	for rows.Next() {
 		var ticker, company, rating, target, action string
-		var time time.Time
+		var time time.Time	
 		
 		if err := rows.Scan(&ticker, &company, &rating, &target, &action, &time); err != nil {
 			continue
@@ -207,6 +231,9 @@ func (s *StockService) SyncAllData(apiClient *APIClient) error {
 	fmt.Println("Iniciando sincronización de datos...")
 	
 	stocks, err := apiClient.FetchAllStocks()
+	// fmt.Println("stocks: ", stocks)
+
+	// fmt.Println("stocks: ", stocks)
 	if err != nil {
 		return fmt.Errorf("error fetching stocks from API: %w", err)
 	}

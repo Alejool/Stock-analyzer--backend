@@ -35,9 +35,9 @@ type APIStock struct {
 	Time       time.Time `json:"time"`
 }
 
-func NewAPIClient(apiKey string) *APIClient {
+func NewAPIClient(apiKey string, baseURL string) *APIClient {
 	return &APIClient{
-		baseURL: "https://8j5baasof2.execute-api.us-west-2.amazonaws.com/production/swechallenge/list",
+		baseURL: baseURL,
 		apiKey:  apiKey,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -56,10 +56,12 @@ func (c *APIClient) FetchStocks(page string) (*APIResponse, error) {
 		}
 		
 		q := u.Query()
-		q.Set("page", page)
+		q.Set("next_page", page)
 		u.RawQuery = q.Encode()
 		reqURL = u.String()
 	}
+
+	fmt.Println("reqURL: ", reqURL)
 
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
@@ -69,7 +71,9 @@ func (c *APIClient) FetchStocks(page string) (*APIResponse, error) {
 	// Agregar headers de autenticación
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "karla/1.0")
+	// req.Header.Set("User-Agent", "karla/1.0")
+
+	// fmt.Println("req: ", req)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -99,46 +103,54 @@ func (c *APIClient) FetchAllStocks() ([]models.Stock, error) {
 	var allStocks []models.Stock
 	nextPage := ""
 
-	for {
-		response, err := c.FetchStocks(nextPage)
-		if err != nil {
-			return nil, fmt.Errorf("error fetching stocks: %w", err)
-		}
 
-		// Convertir APIStock a models.Stock
-		for _, apiStock := range response.Items {
-			stock := models.Stock{
-				Ticker:     apiStock.Ticker,
-				Company:    apiStock.Company,
-				Brokerage:  apiStock.Brokerage,
-				Action:     apiStock.Action,
-				RatingFrom: apiStock.RatingFrom,
-				RatingTo:   apiStock.RatingTo,
-				TargetFrom: apiStock.TargetFrom,
-				TargetTo:   apiStock.TargetTo,
-				Time:       apiStock.Time,
-				CreatedAt:  time.Now(),
-				UpdatedAt:  time.Now(),
-			}
-			allStocks = append(allStocks, stock)
-		}
+for {
+    response, err := c.FetchStocks(nextPage)
+		// fmt.Println("response: ", response)
+    if err != nil {
+        return nil, fmt.Errorf("error fetching stocks: %w", err)
+    }
 
-		// Si no hay más páginas, salir del bucle
-		if response.NextPage == "" {
-			break
-		}
+    // Convert APIStock to models.Stock
+    for _, apiStock := range response.Items {
+        stock := models.Stock{
+            Ticker:     apiStock.Ticker,
+            Company:    apiStock.Company,
+            Brokerage:  apiStock.Brokerage,
+            Action:     apiStock.Action,
+            RatingFrom: apiStock.RatingFrom,
+            RatingTo:   apiStock.RatingTo,
+            TargetFrom: apiStock.TargetFrom,
+            TargetTo:   apiStock.TargetTo,
+            Time:       apiStock.Time,
+            CreatedAt:  time.Now(),
+            UpdatedAt:  time.Now(),
+        }
+        allStocks = append(allStocks, stock)
+    }
 
-		nextPage = response.NextPage
-		
-		// Pequeña pausa para no sobrecargar la API
-		time.Sleep(100 * time.Millisecond)
-	}
+		  // Break the loop if there are no more pages
+    if response.NextPage == "" {
+        break
+    }
+
+    time.Sleep(500 * time.Millisecond) 
+    nextPage = response.NextPage
+
+
+    // Return results if we have accumulated a significant number of stocks
+    if len(allStocks) >= 1000 {
+        return allStocks, nil
+    }
+}
+
 
 	return allStocks, nil
 }
 
 // Método para insertar stocks en batch en la base de datos
 func (s *StockService) InsertStocks(stocks []models.Stock) error {
+
 	if len(stocks) == 0 {
 		return nil
 	}
@@ -169,12 +181,14 @@ func (s *StockService) InsertStocks(stocks []models.Stock) error {
 	}
 	defer stmt.Close()
 
+
 	for _, stock := range stocks {
 		_, err := stmt.Exec(
 			stock.Ticker, stock.Company, stock.Brokerage, stock.Action,
 			stock.RatingFrom, stock.RatingTo, stock.TargetFrom, stock.TargetTo,
 			stock.Time, stock.CreatedAt, stock.UpdatedAt,
 		)
+		
 		if err != nil {
 			return fmt.Errorf("error inserting stock %s: %w", stock.Ticker, err)
 		}

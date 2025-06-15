@@ -30,6 +30,9 @@ func SetupRoutes(r *gin.Engine, stockService *services.StockService) {
 func getStocks(stockService *services.StockService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var filters models.StockFilters
+
+		// Obtener parámetros de query
+		// log.Println("filters: ", filters)
 		
 		// Parsear parámetros de query
 		filters.Ticker = c.Query("ticker")

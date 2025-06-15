@@ -4,6 +4,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"Backend/internal/api"
@@ -41,14 +42,26 @@ func main() {
 
 	// Inicializar servicios
 	stockService := services.NewStockService(db)
-	apiClient := services.NewAPIClient(cfg.APIKey)
+	apiClient := services.NewAPIClient(cfg.APIKey, cfg.APIBaseURL)
+
 
 	// Sincronizar datos iniciales
-	go func() {
-		if err := stockService.SyncAllData(apiClient); err != nil {
-			log.Printf("Error sincronizando datos: %v", err)
-		}
-	}()
+go func() {
+    for {
+        for {
+
+  				log.Printf("NewAPIClient", apiClient)
+            if err := stockService.SyncAllData(apiClient); err != nil {
+                // log.Printf("Error synchronizing data: %v", err)
+               
+                // continue
+            }
+            // Break inner loop on success
+            break
+        }
+        time.Sleep(40 * time.Minute)
+    }
+}()
 
 	// Configurar router
 	r := gin.Default()
@@ -56,7 +69,7 @@ func main() {
 
 	// Configurar CORS
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173"},
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173", "https://43aa-167-0-100-7.ngrok-free.app"},
 		// AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"*"},

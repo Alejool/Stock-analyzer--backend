@@ -144,7 +144,7 @@ func (c *Config) Print() {
 	log.Println("========================================")
 }
 
-// getEnv obtiene variable de entorno con valor por defecto
+// getEnv obtiene variable de entorno 
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -152,7 +152,6 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// maskSensitiveData enmascara datos sensibles para logging
 func maskSensitiveData(data string) string {
 	if len(data) <= 8 {
 		return "***"
