@@ -23,7 +23,7 @@ func Connect(databaseURL string) (*sql.DB, error) {
 
 func Migrate(db *sql.DB) error {
 	query := `
-DROP TABLE IF EXISTS stocks;
+		-- DROP TABLE IF EXISTS stocks;
 
 	CREATE TABLE IF NOT EXISTS stocks (
 		id SERIAL PRIMARY KEY,
@@ -52,7 +52,7 @@ DROP TABLE IF EXISTS stocks;
 	CREATE INDEX IF NOT EXISTS idx_stocks_rating_to ON stocks(rating_to);
 
 	-- delete from stocks;
-	TRUNCATE TABLE stocks;
+	-- TRUNCATE TABLE stocks;
 
 	 
 

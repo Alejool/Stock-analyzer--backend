@@ -45,6 +45,11 @@ type Stock struct {
 	TargetPrice string  `json:"target_price,omitempty"`
 	CurrentRating string `json:"current_rating,omitempty"`
 	Confidence  float64 `json:"confidence,omitempty"`
+	TotalRegister int `json:"total_register,omitempty"`
+	BuyCount int `json:"buy_count,omitempty"`
+	TotalBrokerages int `json:"total_brokerages,omitempty"`
+	LastUpdateFilter time.Time `json:"last_update,omitempty"`
+
 	
 }
 

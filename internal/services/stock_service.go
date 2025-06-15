@@ -20,8 +20,12 @@ func NewStockService(db *sql.DB) *StockService {
 
 func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResponse, error) {
 	query := `
-		SELECT id, ticker, company, brokerage, action, rating_from, rating_to, 
-		       target_from, target_to, time, created_at, updated_at, score, confidence
+		SELECT id, ticker, company, brokerage, action, rating_from, rating_to,
+		       target_from, target_to, time, created_at, updated_at, score, confidence,
+		       count(*) OVER() AS total_register,
+		       count(CASE WHEN rating_to = 'Buy' THEN 1 END) OVER() AS buy_count,
+		       (SELECT COUNT(DISTINCT brokerage) FROM stocks) AS total_brokerages,
+		       max(updated_at) OVER() AS last_update
 		FROM stocks
 
 	`
@@ -59,8 +63,7 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 		args = append(args, filters.Score)
 		argIndex++
 	}
-	// quieor que confidence sea un orden de accedente o desc sea cual sea
-// Confidence should be handled in ORDER BY, not as a WHERE condition
+
 if filters.Confidence != "" {
     if strings.ToUpper(filters.Confidence) == "ASC" {
         query += " ORDER BY confidence ASC"
@@ -88,18 +91,25 @@ if filters.Confidence != "" {
 	query += fmt.Sprintf(" ORDER BY %s %s", sortBy, order)
 
 	// Paginación
-	// limit := -1
-	// if filters.Limit > 0 && filters.Limit <= 100 {
-	// 	limit = filters.Limit
-	// }
+
+
 	
+	limit := 0
+	if filters.Limit > 0 {
+		limit = filters.Limit
+	}
 
 	// offset := 0
 	// if filters.Page > 0 {
 	// 	offset = (filters.Page - 1) * limit
 	// }
 
-	// query += fmt.Sprintf(" LIMIT %d OFFSET %d", limit, offset)
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d ", limit)
+	}
+
+	
+	
 
 	// fmt.Println("query: ", query)
 
@@ -118,6 +128,7 @@ if filters.Confidence != "" {
 			&stock.Action, &stock.RatingFrom, &stock.RatingTo,
 			&stock.TargetFrom, &stock.TargetTo, &stock.Time,
 			&stock.CreatedAt, &stock.UpdatedAt, &stock.Score, &stock.Confidence,
+			&stock.TotalRegister, &stock.BuyCount, &stock.TotalBrokerages, &stock.LastUpdateFilter,
 		)
 		if err != nil {
 			return nil, err
