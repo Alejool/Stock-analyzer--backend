@@ -28,8 +28,6 @@ func main() {
 	if err != nil {
 		log.Fatal("Error conectando a la base de datos:", err)
 	}
-
-	
 	defer db.Close()
 
 	// Ejecutar migraciones

@@ -88,7 +88,7 @@ if filters.Confidence != "" {
 		order = "DESC"
 	}
 
-	query += fmt.Sprintf(" ORDER BY %s %s", sortBy, order)
+	query += fmt.Sprintf(" ORDER BY %s %s  GROUP BY ticker, brokerage", sortBy, order)
 
 	// Paginación
 
