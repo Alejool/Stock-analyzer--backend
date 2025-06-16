@@ -64,13 +64,13 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 		argIndex++
 	}
 
-if filters.Confidence != "" {
-    if strings.ToUpper(filters.Confidence) == "ASC" {
-        query += " ORDER BY confidence ASC"
-    } else if strings.ToUpper(filters.Confidence) == "DESC" {
-        query += " ORDER BY confidence DESC"
-    }
-}
+	if filters.Confidence != "" {
+		if strings.ToUpper(filters.Confidence) == "ASC" {
+			query += " ORDER BY confidence ASC"
+		} else if strings.ToUpper(filters.Confidence) == "DESC" {
+			query += " ORDER BY confidence DESC"
+		}
+	}
 
 	// fmt.Println("query: ", query)
 
@@ -80,7 +80,7 @@ if filters.Confidence != "" {
 		sortBy = filters.SortBy
 	}
 
-	order := ""
+	order := "DESC"
 	if filters.Order == "asc" {
 		order = "ASC"
 	}
@@ -88,12 +88,10 @@ if filters.Confidence != "" {
 		order = "DESC"
 	}
 
-	query += fmt.Sprintf(" ORDER BY %s %s  GROUP BY ticker, brokerage", sortBy, order)
+	query += fmt.Sprintf(" GROUP BY id, ticker, brokerage ORDER BY %s %s  ", sortBy, order)
 
 	// Paginación
 
-
-	
 	limit := 0
 	if filters.Limit > 0 {
 		limit = filters.Limit
@@ -108,10 +106,8 @@ if filters.Confidence != "" {
 		query += fmt.Sprintf(" LIMIT %d ", limit)
 	}
 
-	
-	
-
-	// fmt.Println("query: ", query)
+	// Log the SQL query and parameters for debugging API requests
+	// fmt.Printf("SQL Query: %s\nParameters: %v\n", query, args)
 
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
@@ -137,7 +133,7 @@ if filters.Confidence != "" {
 		stocks = append(stocks, stock)
 	}
 
-	// oragnizata stocks por confindece
+	// organizate data stocks por confindece
 	sort.Slice(stocks, func(i, j int) bool {
 		return stocks[i].Confidence > stocks[j].Confidence
 	})
@@ -175,21 +171,21 @@ func (s *StockService) GetRecommendations() ([]models.Stock, error) {
 		var recomendation models.Stock
 
 		err := rows.Scan(
-			&recomendation.Ticker, 
+			&recomendation.Ticker,
 			&recomendation.Company,
-			&recomendation.RatingTo, 
-			&recomendation.Brokerage, 
-			&recomendation.TargetTo, 
+			&recomendation.RatingTo,
+			&recomendation.Brokerage,
+			&recomendation.TargetTo,
 			&recomendation.RatingFrom,
-			&recomendation.Action, 
-			 &recomendation.Time,
-			&recomendation.Score, 
+			&recomendation.Action,
+			&recomendation.Time,
+			&recomendation.Score,
 			&recomendation.Confidence,
 		)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		recommendations = append(recommendations, recomendation)
 	}
 
@@ -197,16 +193,16 @@ func (s *StockService) GetRecommendations() ([]models.Stock, error) {
 }
 
 func calculateScore(rating, action string, timestamp time.Time) float64 {
-	score := 50.0 // Base score
+	score := 20.0 // Base score
 
 	// Bonus por rating
 	switch rating {
 	case "Strong Buy":
-		score += 30
+		score += 50
 	case "Buy":
-		score += 20
+		score += 40
 	case "Outperform", "Overweight":
-		score += 15
+		score += 35
 	}
 
 	// Bonus por action
@@ -216,9 +212,9 @@ func calculateScore(rating, action string, timestamp time.Time) float64 {
 
 	// Bonus por recencia
 	daysSince := time.Now().Sub(timestamp).Hours() / 24
-	if daysSince < 7 {
+	if daysSince < 1 {
 		score += 10
-	} else if daysSince < 14 {
+	} else if daysSince < 3 {
 		score += 5
 	}
 
@@ -280,7 +276,6 @@ func (s *StockService) SyncAllData(apiClient *APIClient) error {
 	if err := s.InsertStocks(stocks); err != nil {
 		return fmt.Errorf("error inserting stocks into database: %w", err)
 	}
-	
 
 	fmt.Printf("Sincronización completada: %d registros procesados\n", len(stocks))
 	return nil

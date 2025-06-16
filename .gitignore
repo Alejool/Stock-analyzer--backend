@@ -49,3 +49,6 @@ vendor/
 
 # Air (live reload)
 tmp/
+*.md
+
+cockroach-data

@@ -2,16 +2,16 @@
 package main
 
 import (
-	"log"
-	"os"
-	// "time"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
 	"Backend/internal/api"
 	"Backend/internal/config"
 	"Backend/internal/database"
 	"Backend/internal/services"
+	"log"
+	"os"
+	// "time"
 
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -24,7 +24,7 @@ func main() {
 	// 	log.Fatal("Error conectando a la base de datos:", err)
 	// }
 	// defer db.Close()
-	db, err := database.Connect(cfg.DatabaseURL )
+	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal("Error conectando a la base de datos:", err)
 	}
@@ -42,32 +42,30 @@ func main() {
 	stockService := services.NewStockService(db)
 	// apiClient := services.NewAPIClient(cfg.APIKey, cfg.APIBaseURL)
 
-
 	// Sincronizar datos iniciales
-// go func() {
-//     for {
-//         for {
+	// go func() {
+	// 	for {
+	// 		for {
 
-//   				log.Printf("NewAPIClient", apiClient)
-//             if err := stockService.SyncAllData(apiClient); err != nil {
-//                 // log.Printf("Error synchronizing data: %v", err)
-               
-//                 // continue
-//             }
-//             // Break inner loop on success
-//             break
-//         }
-//         time.Sleep(40 * time.Minute)
-//     }
-// }()
+	// 			log.Printf("NewAPIClient", apiClient)
+	// 			if err := stockService.SyncAllData(apiClient); err != nil {
+	// 				// log.Printf("Error synchronizing data: %v", err)
+
+	// 				// continue
+	// 			}
+	// 			// Break inner loop on success
+	// 			break
+	// 		}
+	// 		time.Sleep(40 * time.Minute)
+	// 	}
+	// }()
 
 	// Configurar router
 	r := gin.Default()
 
-
 	// Configurar CORS
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173", "https://43aa-167-0-100-7.ngrok-free.app"},
+		AllowOrigins: []string{"http://localhost:3000", "http://localhost:5173", "https://43aa-167-0-100-7.ngrok-free.app"},
 		// AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"*"},
@@ -82,8 +80,7 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	
+
 	log.Printf("Servidor iniciado en el puerto %s", port)
 	log.Fatal(r.Run(":" + port))
 }
-
