@@ -52,7 +52,7 @@ func Migrate(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_stocks_rating_to ON stocks(rating_to);
 
 	-- delete from stocks;
- -- TRUNCATE TABLE stocks;
+  -- TRUNCATE TABLE stocks;
 
 	`
 	_, err := db.Exec(query)
