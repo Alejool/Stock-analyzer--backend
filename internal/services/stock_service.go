@@ -33,6 +33,8 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 	args := []any{}
 	argIndex := 1
 
+	query += fmt.Sprintf(" WHERE 1=1 ")
+
 	// Aplicar filtros
 	if filters.Ticker != "" {
 		query += fmt.Sprintf(" AND ticker ILIKE $%d", argIndex)
@@ -64,6 +66,13 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 		argIndex++
 	}
 
+		if filters.Today== "true" {
+		// Convert the time string to a time.Time object and format it to match today's date
+query += fmt.Sprintf(" AND DATE(time) = CURRENT_DATE")
+		// args = append(args, time.Now().Format("2006-01-02"))
+		argIndex++
+	}
+
 	if filters.Confidence != "" {
 		if strings.ToUpper(filters.Confidence) == "ASC" {
 			query += " ORDER BY confidence ASC"
@@ -71,6 +80,8 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 			query += " ORDER BY confidence DESC"
 		}
 	}
+
+
 
 	// fmt.Println("query: ", query)
 
@@ -89,6 +100,8 @@ func (s *StockService) GetStocks(filters models.StockFilters) (*models.StockResp
 	}
 
 	query += fmt.Sprintf(" GROUP BY id, ticker, brokerage ORDER BY %s %s  ", sortBy, order)
+
+	// fmt.Println("query: ", query)
 
 	// Paginación
 
@@ -193,7 +206,7 @@ func (s *StockService) GetRecommendations() ([]models.Stock, error) {
 }
 
 func calculateScore(rating, action string, timestamp time.Time) float64 {
-	score := 20.0 // Base score
+	score := 20.0
 
 	// Bonus por rating
 	switch rating {

@@ -24,6 +24,7 @@ type StockFilters struct {
 	ProductID        int    `json:"id" form:"id"`
 	Score float64 `json:"score" form:"score"`
 	Confidence string `json:"confidence" form:"confidence"`
+	Today string `json:"today" form:"today"`
 }
 
 
