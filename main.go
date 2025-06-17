@@ -8,7 +8,7 @@ import (
 	"Backend/internal/services"
 	"log"
 	"os"
-	// "time"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -40,25 +40,25 @@ func main() {
 
 	// Inicializar servicios
 	stockService := services.NewStockService(db)
-	// apiClient := services.NewAPIClient(cfg.APIKey, cfg.APIBaseURL)
+	apiClient := services.NewAPIClient(cfg.APIKey, cfg.APIBaseURL)
 
 	// Sincronizar datos iniciales
-	// go func() {
-	// 	for {
-	// 		for {
+	go func() {
+		for {
+			for {
 
-	// 			log.Printf("NewAPIClient", apiClient)
-	// 			if err := stockService.SyncAllData(apiClient); err != nil {
-	// 				// log.Printf("Error synchronizing data: %v", err)
+				log.Printf("NewAPIClient", apiClient)
+				if err := stockService.SyncAllData(apiClient); err != nil {
+					// log.Printf("Error synchronizing data: %v", err)
 
-	// 				// continue
-	// 			}
-	// 			// Break inner loop on success
-	// 			break
-	// 		}
-	// 		time.Sleep(40 * time.Minute)
-	// 	}
-	// }()
+					// continue
+				}
+				// Break inner loop on success
+				break
+			}
+			time.Sleep(40 * time.Minute)
+		}
+	}()
 
 	// Configurar router
 	r := gin.Default()
