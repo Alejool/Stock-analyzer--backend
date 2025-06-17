@@ -42,6 +42,7 @@ func getStocks(stockService *services.StockService) gin.HandlerFunc {
 		filters.Rating = c.Query("rating")
 		filters.SortBy = c.Query("sort_by")
 		filters.Order = c.Query("order")
+		filters.Today = c. Query("today")
 
 		if page := c.Query("page"); page != "" {
 			if p, err := strconv.Atoi(page); err == nil {
