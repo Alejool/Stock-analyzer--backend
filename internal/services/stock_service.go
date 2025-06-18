@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 	"strconv"
+	"math"
 
 	"Backend/internal/models"
 	"database/sql"
@@ -219,113 +220,148 @@ func (s *StockService) GetRecommendations() ([]models.Stock, error) {
 
 	return recommendations, nil
 }
-func calculateScore(ratingFrom, ratingTo, action, targetFromStr, targetToStr string, timestamp time.Time) float64 {
-	score := 50.0
 
-	// Mapeo completo de ratings con sus rankings
-	ratingRank := map[string]int{
-		// Ratings negativos
-		"sell":                    1,
-		"underperform":           2,
-		"sector underperform":    3,
-		"underweight":            4,
-		
-		// Ratings neutrales
-		"hold":                   5,
-		"neutral":                5,
-		"equal weight":           5,
-		"market perform":         5,
-		"sector perform":         5,
-		"in-line":                5,
-		"peer perform":           5,
-		"sector weight":          5,
-		
-		// Ratings positivos bajos
-		"positive":               6,
-		"outperformer":           6,
-		
-		// Ratings positivos medios
-		"outperform":             7,
-		"market outperform":      7,
-		"sector outperform":      7,
-		
-		// Ratings positivos altos
-		"overweight":             8,
-		"buy":                    8,
-		
-		// Ratings más altos
-		"strong-buy":             9,
-		"speculative buy":        9,
-	}
 
-	// Procesar ratings
-	rf := strings.ToLower(strings.TrimSpace(ratingFrom))
-	rt := strings.ToLower(strings.TrimSpace(ratingTo))
+func calculateScore(
+    ratingFrom, ratingTo, action, targetFromStr, targetToStr string,
+    timestamp time.Time,
+) float64 {
+    score := 50.0 
 
-	if fromRank, ok1 := ratingRank[rf]; ok1 {
-		if toRank, ok2 := ratingRank[rt]; ok2 {
-			delta := toRank - fromRank
-			score += float64(delta) * 3
-		}
-	}
+    // 1. Mapeo detallado de ratings con rankings y pesos
+    ratingRank := map[string]int{
+        // Ratings negativos (1-4)
+        "sell":                    1,
+        "strong sell":             1,
+        "underperform":           2,
+        "sector underperform":    3,
+        "underweight":            4,
 
-	// Procesar targets
-	targetFromStr = strings.ReplaceAll(strings.ReplaceAll(targetFromStr, "$", ""), ",", "")
-	targetToStr = strings.ReplaceAll(strings.ReplaceAll(targetToStr, "$", ""), ",", "")
-	targetFromFloat, err1 := strconv.ParseFloat(targetFromStr, 64)
-	targetToFloat, err2 := strconv.ParseFloat(targetToStr, 64)
-	targetFrom := float64(int64(targetFromFloat*100)) / 100
-	targetTo := float64(int64(targetToFloat*100)) / 100
+        // Ratings neutrales (5)
+        "hold":                   5,
+        "neutral":                5,
+        "equal weight":           5,
+        "market perform":         5,
+        "sector perform":         5,
+        "in-line":                5,
+        "peer perform":           5,
+        "sector weight":          5,
 
-	if err1 == nil && err2 == nil && targetFrom > 0 {
-		percentChange := (targetTo - targetFrom) / targetFrom
-		score += percentChange * 100 // +10% => +10 puntos
-	}
+        // Ratings positivos (6-9)
+        "positive":               6,
+        "outperformer":           6,
+        "outperform":             7,
+        "market outperform":      7,
+        "sector outperform":      7,
+        "overweight":             8,
+        "buy":                    8,
+        "strong-buy":             9,
+        "speculative buy":        9,
+    }
 
-	actionLower := strings.ToLower(strings.TrimSpace(action))
-	
-	actionLower = strings.TrimSuffix(actionLower, " by")
-	
-	switch actionLower {
-	case "upgraded":
-		score += 15
-	case "downgraded":
-		score -= 15
-	case "initiated":
-		score += 8
-	case "target raised":
-		score += 8
-	case "target lowered":
-		score -= 8
-	case "reiterated":
-		score += 2  
-	case "target set":
-		score += 5  
-	}
+    // 2. Procesamiento de ratings
+    rf := strings.ToLower(strings.TrimSpace(ratingFrom))
+    rt := strings.ToLower(strings.TrimSpace(ratingTo))
 
-daysSince := time.Since(timestamp).Hours() / 24
-if daysSince < 1 {
-    score += 10          
-} else if daysSince < 2 {
-    score += 2            
-} else if daysSince < 3 {
-    score -= 2           
-} else if daysSince < 5 {
-    score -= 15         
-} else if daysSince < 8 {
-    score = 40          
-} else {
-    score = 30          
-}
+    if fromRank, ok1 := ratingRank[rf]; ok1 {
+        if toRank, ok2 := ratingRank[rt]; ok2 {
+            delta := toRank - fromRank
+            
+            switch {
+            case delta > 2:
+                score += float64(delta) * 4 
+            case delta > 0:
+                score += float64(delta) * 3
+            case delta < -2:
+                score += float64(delta) * 4 
+            default:
+                score += float64(delta) * 2
+            }
+        }
+    }
 
-	// Limitar el score entre 0 y 100
-	if score > 100 {
-		score = 100
-	} else if score < 0 {
-		score = 0
-	}
+    // 3. Procesamiento de precios objetivo
+    targetFromStr = strings.ReplaceAll(strings.ReplaceAll(targetFromStr, "$", ""), ",", "")
+    targetToStr = strings.ReplaceAll(strings.ReplaceAll(targetToStr, "$", ""), ",", "")
+    targetFromFloat, err1 := strconv.ParseFloat(targetFromStr, 64)
+    targetToFloat, err2 := strconv.ParseFloat(targetToStr, 64)
+    
+    // Redondear a 2 decimales
+    targetFrom := math.Round(targetFromFloat*100) / 100
+    targetTo := math.Round(targetToFloat*100) / 100
 
-	return score
+    if err1 == nil && err2 == nil && targetFrom > 0 {
+        percentChange := (targetTo - targetFrom) / targetFrom
+        
+        // Escalado con techo para evitar outliers
+        if percentChange > 0.5 {
+            score += 30 // Techo para aumentos >50%
+        } else if percentChange < -0.5 {
+            score -= 30 // Piso para disminuciones >50%
+        } else {
+            score += percentChange * 40 // Menor impacto que en versión original
+        }
+    }
+
+    // 4. Acciones de analistas (con ajuste de pesos)
+    actionLower := strings.ToLower(strings.TrimSpace(action))
+    actionLower = strings.TrimSuffix(actionLower, " by")
+
+    switch actionLower {
+    case "upgraded", "upgrade":
+        score += 20 
+    case "downgraded", "downgrade":
+        score -= 20
+    case "initiated", "initiated coverage":
+        score += 10
+    case "target raised", "target increase":
+        score += 7
+    case "target lowered", "target decrease":
+        score -= 7
+    case "reiterated", "maintained", "reaffirmed":
+        score += 3
+    case "target set", "new target":
+        score += 6
+    case "removed", "discontinued":
+        score -= 10
+    }
+
+    // 5. Factor temporal (curva exponencial más realista)
+    daysSince := time.Since(timestamp).Hours() / 24
+    
+    // Decaimiento exponencial con ajuste por tramos
+    switch {
+    case daysSince < 1:
+        score += 12 // Máximo impacto positivo
+    case daysSince < 2:
+        score += 5
+    case daysSince < 3:
+        score -= 3
+    case daysSince < 5:
+        score -= 10
+    case daysSince < 7:
+        score -= 18 // Penalización mayor después de una semana
+    case daysSince < 10:
+        score -= 25
+    default:
+        score -= 35 // Información muy antigua
+    }
+
+    // 6. Límites finales y ajustes
+    if score > 100 {
+        score = 100
+    } else if score < 0 {
+        score = 0
+    }
+
+    // Ajuste final para dar más peso a cambios significativos
+    if score > 70 {
+        score = 70 + (score-70)*0.5 // Suavizado en extremo positivo
+    } else if score < 30 {
+        score = 30 - (30-score)*0.5 // Suavizado en extremo negativo
+    }
+
+    return score
 }
 
 
