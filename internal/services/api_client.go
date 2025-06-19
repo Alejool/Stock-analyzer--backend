@@ -48,7 +48,6 @@ func NewAPIClient(apiKey string, baseURL string) *APIClient {
 func (c *APIClient) FetchStocks(page string) (*APIResponse, error) {
 	reqURL := c.baseURL
 	
-	// Si hay una página específica, agregarla como parámetro
 	if page != "" {
 		u, err := url.Parse(reqURL)
 		if err != nil {
@@ -68,7 +67,6 @@ func (c *APIClient) FetchStocks(page string) (*APIResponse, error) {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
-	// Agregar headers de autenticación
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	// req.Header.Set("User-Agent", "karla/1.0")
@@ -150,7 +148,7 @@ for {
 	return allStocks, nil
 }
 
-// Método para insertar stocks en batch en la base de datos
+
 func (s *StockService) InsertStocks(stocks []models.Stock) error {
 
 	if len(stocks) == 0 {
