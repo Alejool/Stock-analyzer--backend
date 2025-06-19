@@ -285,21 +285,18 @@ func calculateScore(
     targetToStr = strings.ReplaceAll(strings.ReplaceAll(targetToStr, "$", ""), ",", "")
     targetFromFloat, err1 := strconv.ParseFloat(targetFromStr, 64)
     targetToFloat, err2 := strconv.ParseFloat(targetToStr, 64)
-    
-    // Redondear a 2 decimales
     targetFrom := math.Round(targetFromFloat*100) / 100
     targetTo := math.Round(targetToFloat*100) / 100
 
     if err1 == nil && err2 == nil && targetFrom > 0 {
         percentChange := (targetTo - targetFrom) / targetFrom
         
-        // Escalado con techo para evitar outliers
         if percentChange > 0.5 {
-            score += 30 // Techo para aumentos >50%
+            score += 30 
         } else if percentChange < -0.5 {
-            score -= 30 // Piso para disminuciones >50%
+            score -= 30 
         } else {
-            score += percentChange * 40 // Menor impacto que en versión original
+            score += percentChange * 40 
         }
     }
 
@@ -332,7 +329,7 @@ func calculateScore(
     // Decaimiento exponencial con ajuste por tramos
     switch {
     case daysSince < 1:
-        score += 12 // Máximo impacto positivo
+        score += 12 
     case daysSince < 2:
         score += 5
     case daysSince < 3:
@@ -340,25 +337,23 @@ func calculateScore(
     case daysSince < 5:
         score -= 10
     case daysSince < 7:
-        score -= 18 // Penalización mayor después de una semana
+        score -= 18 
     case daysSince < 10:
         score -= 25
     default:
-        score -= 35 // Información muy antigua
+        score -= 35 
     }
 
-    // 6. Límites finales y ajustes
     if score > 100 {
         score = 100
     } else if score < 0 {
         score = 0
     }
 
-    // Ajuste final para dar más peso a cambios significativos
     if score > 70 {
-        score = 70 + (score-70)*0.5 // Suavizado en extremo positivo
+        score = 70 + (score-70)*0.5 
     } else if score < 30 {
-        score = 30 - (30-score)*0.5 // Suavizado en extremo negativo
+        score = 30 - (30-score)*0.5 
     }
 
     return score
