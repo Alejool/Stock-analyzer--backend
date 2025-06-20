@@ -18,9 +18,10 @@ type Config struct {
 	DatabaseName string
 	Environment  string
 	GinMode      string
+	JwtSecretKey []byte
 }
 
-// 
+
 func Load() *Config {
 
 	if err := godotenv.Load(); err != nil {
@@ -35,6 +36,7 @@ func Load() *Config {
 		DatabaseName: getEnv("DATABASE_NAME", "stock_tracking"),
 		Environment:  getEnv("ENVIRONMENT", "development"),
 		GinMode:      getEnv("GIN_MODE", "debug"),
+		JwtSecretKey: []byte(getEnv("JWT_SECRET_KEY", "")),
 	}
 
 	if err := config.Validate(); err != nil {
