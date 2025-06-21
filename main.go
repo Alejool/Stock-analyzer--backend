@@ -5,6 +5,7 @@ import (
 	"Backend/internal/api"
 	"Backend/internal/config"
 	"Backend/internal/database"
+	// "Backend/internal/middleware"
 	"Backend/internal/services"
 	"log"
 	"os"
@@ -15,22 +16,17 @@ import (
 )
 
 func main() {
-	// Cargar configuración
+	// Config env
 	cfg := config.Load()
 
-	// Conectar a la base de datos
-	// db, err := database.Connect(cfg.DatabaseURL )
-	// if err != nil {
-	// 	log.Fatal("Error conectando a la base de datos:", err)
-	// }
-	// defer db.Close()
+	// Conect to database
 	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal("Error conectando a la base de datos:", err)
 	}
 	defer db.Close()
 
-	// Ejecutar migraciones
+	// Run migrations
 	if err := database.Migrate(db); err != nil {
 		log.Fatal("Error ejecutando migraciones:", err)
 		log.Println("Error ejecutando migraciones:", err)
@@ -38,32 +34,29 @@ func main() {
 		log.Println("Database migrations executed successfully")
 	}
 
-	// Inicializar servicios
+	// Initialize services
 	stockService := services.NewStockService(db)
 	apiClient := services.NewAPIClient(cfg.APIKey, cfg.APIBaseURL)
 
-	// Sincronizar datos iniciales
+	// Initialize stock data sync
 	go func() {
 		for {
 			for {
 
 				log.Printf("NewAPIClient", apiClient)
 				if err := stockService.SyncAllData(apiClient); err != nil {
-					// log.Printf("Error synchronizing data: %v", err)
-
-					// continue
 				}
-				// Break inner loop on success
 				break
 			}
+			// Wait for 40 minutes
 			time.Sleep(40 * time.Minute)
 		}
 	}()
 
-	// Configurar router
+	//Config gin
 	r := gin.Default()
 
-	// Configurar CORS
+	// Configurar middlewares - CORS	
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"http://localhost:3000", "http://localhost:5173", "https://43aa-167-0-100-7.ngrok-free.app"},
 		// AllowOrigins:     []string{"*"},
@@ -72,10 +65,10 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	// Configurar rutas
-	api.SetupRoutes(r, stockService)
+	// Config routes
+	api.SetupRoutes(r, stockService, cfg)
 
-	// Iniciar servidor
+	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
