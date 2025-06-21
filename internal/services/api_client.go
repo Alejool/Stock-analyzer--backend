@@ -159,7 +159,7 @@ func (s *StockService) InsertStocks(stocks []models.Stock) error {
 		INSERT INTO stocks (ticker, company, brokerage, action, rating_from, rating_to, 
 		                   target_from, target_to, time, created_at, updated_at, score, reason, target_price, current_rating, confidence)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-		ON CONFLICT (ticker, brokerage, time) DO UPDATE SET
+		ON CONFLICT (ticker, brokerage) DO UPDATE SET
 			action = EXCLUDED.action,
 			rating_from = EXCLUDED.rating_from,
 			rating_to = EXCLUDED.rating_to,
@@ -167,6 +167,7 @@ func (s *StockService) InsertStocks(stocks []models.Stock) error {
 			target_to = EXCLUDED.target_to,
 			created_at = EXCLUDED.created_at,
 			updated_at = NOW(),
+			time = EXCLUDED.time,
 			score = EXCLUDED.score,
 			reason = EXCLUDED.reason,
 			target_price = EXCLUDED.target_price,
