@@ -23,7 +23,7 @@ func Connect(databaseURL string) (*sql.DB, error) {
 
 func Migrate(db *sql.DB) error {
 	query := `
-	-- DROP TABLE IF EXISTS stocks;
+	 -- DROP TABLE IF EXISTS stocks;
 
 	CREATE TABLE IF NOT EXISTS stocks (
 		id SERIAL PRIMARY KEY,
@@ -43,16 +43,16 @@ func Migrate(db *sql.DB) error {
 		target_price VARCHAR(20),
 		current_rating VARCHAR(50),
 		confidence FLOAT,
-		UNIQUE(ticker, brokerage)
+		UNIQUE(ticker, company)
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_stocks_ticker ON stocks(ticker);
 	CREATE INDEX IF NOT EXISTS idx_stocks_company ON stocks(company);
 	CREATE INDEX IF NOT EXISTS idx_stocks_time ON stocks(time DESC);
-	CREATE INDEX IF NOT EXISTS idx_stocks_rating_to ON stocks(rating_to);
+
 
 	-- delete from stocks;
-  TRUNCATE TABLE stocks;
+  -- TRUNCATE TABLE stocks;
 
 	`
 	_, err := db.Exec(query)
