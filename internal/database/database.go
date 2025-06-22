@@ -43,13 +43,16 @@ func Migrate(db *sql.DB) error {
 		target_price VARCHAR(20),
 		current_rating VARCHAR(50),
 		confidence FLOAT,
-		UNIQUE(ticker, company)
+		UNIQUE(ticker, company),
+  CONSTRAINT stocks_ticker_company_key UNIQUE (ticker, company)
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_stocks_ticker ON stocks(ticker);
 	CREATE INDEX IF NOT EXISTS idx_stocks_company ON stocks(company);
-	CREATE INDEX IF NOT EXISTS idx_stocks_time ON stocks(time DESC);
-
+	DROP INDEX IF EXISTS idx_stocks_time;
+	CREATE INDEX idx_stocks_time ON stocks(time DESC);
+-- Remove the DO block since ALTER TABLE in functions is not supported
+-- The UNIQUE constraint is already defined in the CREATE TABLE statement above
 
 	-- delete from stocks;
   -- TRUNCATE TABLE stocks;
