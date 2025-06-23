@@ -175,7 +175,7 @@ GET /swagger/*
 
 ```bash
 # Clonar el repositorio
-git clone <repository-url>
+git clone https://github.com/Alejool/Stock-analyzer-GO.git
 cd Backend
 
 # Instalar dependencias
